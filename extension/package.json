@@ -21,6 +21,6 @@
   "devDependencies": {
     "esbuild": "^0.28.2",
     "tfx-cli": "^0.24.0",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   }
 }
