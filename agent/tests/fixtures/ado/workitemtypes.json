@@ -1,0 +1,10 @@
+{
+  "count": 5,
+  "value": [
+    { "name": "Bug", "referenceName": "Microsoft.VSTS.WorkItemTypes.Bug" },
+    { "name": "Task", "referenceName": "Microsoft.VSTS.WorkItemTypes.Task" },
+    { "name": "User Story", "referenceName": "Microsoft.VSTS.WorkItemTypes.UserStory" },
+    { "name": "Feature", "referenceName": "Microsoft.VSTS.WorkItemTypes.Feature" },
+    { "name": "Epic", "referenceName": "Microsoft.VSTS.WorkItemTypes.Epic" }
+  ]
+}

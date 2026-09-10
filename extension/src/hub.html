@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ticket to PR</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="hub" id="hub">
+      <header class="hub-header">
+        <h1 class="hub-title">Create a pull request with the agent</h1>
+        <p class="hub-context" id="context-line"></p>
+      </header>
+
+      <div class="banner" id="config-banner" role="note" hidden>
+        <p class="banner-title">This project is not connected to an agent yet.</p>
+        <p class="banner-body">
+          Open <strong>Agent settings</strong> below and enter the Agent Application URL, the Entra
+          application ID for this extension, and the scope to request. These are saved for your
+          account. An administrator can instead pin them for everyone when they package and install
+          the extension.
+        </p>
+      </div>
+
+      <details class="settings" id="settings-details">
+        <summary class="settings-summary">Agent settings</summary>
+        <form class="settings-form" id="settings-form" novalidate>
+          <p class="settings-intro">
+            Stored for your account, for this project. The page sends an Entra access token to the
+            Agent Application URL, so only point it at an agent you trust.
+          </p>
+
+          <p class="message" id="settings-managed" data-tone="muted" hidden>
+            These values are set by the installed extension package and apply to everyone in this
+            project. Only someone who can install extensions in this organization can change them.
+          </p>
+
+          <div class="field">
+            <label class="field-label" for="agent-url">Agent Application URL</label>
+            <input
+              class="field-input"
+              id="agent-url"
+              name="agent-url"
+              type="url"
+              inputmode="url"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="https://my-account.services.ai.azure.com/api/projects/my-project/agents/ticket-to-pr/endpoint/protocols"
+              aria-describedby="agent-url-hint"
+            />
+            <p class="field-hint" id="agent-url-hint">
+              The base URL of the deployed agent — the part before <code>/invocations</code>. Must
+              use https, must be a Microsoft Foundry host ending in
+              <code>.services.ai.azure.com</code>, and must have no query string or fragment. Your
+              Foundry access token is sent to this host, so it is not allowed to be any other one.
+            </p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="entra-client-id">Entra application (client) ID</label>
+            <input
+              class="field-input"
+              id="entra-client-id"
+              name="entra-client-id"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="00000000-0000-0000-0000-000000000000"
+              aria-describedby="entra-client-id-hint"
+            />
+            <p class="field-hint" id="entra-client-id-hint">
+              The single-page application registration this page signs in as. Public client, no
+              secret.
+            </p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="entra-tenant-id">Entra directory (tenant) ID</label>
+            <input
+              class="field-input"
+              id="entra-tenant-id"
+              name="entra-tenant-id"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="00000000-0000-0000-0000-000000000000"
+              aria-describedby="entra-tenant-id-hint"
+            />
+            <p class="field-hint" id="entra-tenant-id-hint">
+              The directory the registration lives in. Required: a single-tenant application
+              cannot sign in through the shared <code>/common</code> endpoint.
+            </p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="agent-scope">Agent scope</label>
+            <input
+              class="field-input"
+              id="agent-scope"
+              name="agent-scope"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="https://ai.azure.com/.default"
+              aria-describedby="agent-scope-hint"
+            />
+            <p class="field-hint" id="agent-scope-hint">
+              The audience of the token sent to the agent. Always
+              <code>https://ai.azure.com/.default</code>, the Microsoft Foundry data plane — a
+              hosted agent's endpoint accepts nothing else. Your account needs the
+              <strong>Foundry Agent Consumer</strong> role on the project or the agent.
+            </p>
+          </div>
+
+          <div class="settings-actions">
+            <button class="button" id="save-settings" type="submit">Save settings</button>
+            <p class="message" id="settings-message" data-tone="muted" hidden></p>
+          </div>
+        </form>
+      </details>
+
+      <form class="run-form" id="run-form" novalidate>
+        <fieldset class="fieldset">
+          <legend class="legend">Work item</legend>
+
+          <div class="field">
+            <label class="field-label" for="work-item-search">Search by ID or title</label>
+            <input
+              class="field-input"
+              id="work-item-search"
+              name="work-item-search"
+              type="search"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="4123 or null reference"
+              aria-describedby="work-item-search-hint"
+            />
+            <p class="field-hint" id="work-item-search-hint">
+              Filters the list below. Type a full ID and press Enter to fetch a work item that is
+              not in the list.
+            </p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="work-item">Work item</label>
+            <select
+              class="field-input"
+              id="work-item"
+              name="work-item"
+              size="1"
+              aria-describedby="work-item-message"
+            ></select>
+            <p class="message" id="work-item-message" data-tone="muted" hidden></p>
+            <button class="button button-secondary" id="work-item-retry" type="button" hidden>
+              Try loading work items again
+            </button>
+          </div>
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="legend">Repository</legend>
+
+          <div class="field">
+            <label class="field-label" for="repository">Repository</label>
+            <select
+              class="field-input"
+              id="repository"
+              name="repository"
+              size="1"
+              aria-describedby="repository-message"
+            ></select>
+            <p class="message" id="repository-message" data-tone="muted" hidden></p>
+            <button class="button button-secondary" id="repository-retry" type="button" hidden>
+              Try loading repositories again
+            </button>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="base-branch">
+              Base branch <span class="field-optional">(optional)</span>
+            </label>
+            <input
+              class="field-input"
+              id="base-branch"
+              name="base-branch"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              aria-describedby="base-branch-hint"
+            />
+            <p class="field-hint" id="base-branch-hint">
+              Leave empty to fork from the repository's default branch.
+            </p>
+          </div>
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="legend">New branch</legend>
+
+          <div class="field">
+            <label class="field-label" for="branch">Branch name</label>
+            <input
+              class="field-input"
+              id="branch"
+              name="branch"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              required
+              aria-describedby="branch-hint branch-message"
+            />
+            <p class="field-hint" id="branch-hint">
+              Suggested from the work item. Letters, numbers, and <code>. _ / -</code> only. The
+              branch must not already exist.
+            </p>
+            <p class="message" id="branch-message" data-tone="error" hidden></p>
+          </div>
+        </fieldset>
+
+        <div class="submit-row">
+          <button class="button button-primary" id="submit" type="submit" disabled>
+            Create PR with agent
+          </button>
+          <p class="message" id="form-message" data-tone="error" hidden></p>
+        </div>
+      </form>
+
+      <section class="status-panel" id="status-panel" aria-labelledby="status-heading" hidden>
+        <h2 class="status-heading" id="status-heading">Run status</h2>
+        <p class="status-live" id="status-live" role="status" aria-live="polite"></p>
+        <ol class="phase-list" id="phase-list"></ol>
+        <div class="status-detail" id="status-detail"></div>
+        <p class="run-meta" id="run-meta" hidden></p>
+      </section>
+    </main>
+
+    <script src="hub.js"></script>
+  </body>
+</html>

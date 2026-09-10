@@ -1,0 +1,49 @@
+name: Feature request
+description: Propose a change to what the agent does.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Some things are deliberately out of scope for v1 and a request for them will be
+        closed with a link rather than debated: multi-repo or multi-ticket runs,
+        auto-merge, GitHub or any SCM other than Azure DevOps, per-request choice of
+        harness or model, and the agent hosting a web UI of its own. See the README's
+        ["What it does not do"](https://github.com/EDockus/aiengineer/blob/main/README.md#what-it-does-not-do).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >-
+        What you are trying to do and where the agent gets in the way. Describe the
+        situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like it to do
+    validations:
+      required: true
+
+  - type: textarea
+    id: contract
+    attributes:
+      label: Does this change the published contract?
+      description: >-
+        `docs/contract.md` is a published interface. A new request field, a new error code
+        or a changed response shape is a breaking change that bumps the major version and
+        the path — say so here if it applies.
+      placeholder: No / Yes, it adds ... to the request body.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: >-
+        A caller-side workaround, a different harness, a prompt change. If nothing works,
+        say that.

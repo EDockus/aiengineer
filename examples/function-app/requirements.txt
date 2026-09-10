@@ -1,0 +1,10 @@
+# Azure Functions Python v2 programming model.
+azure-functions>=1.21.0
+
+# Managed-identity auth for the agent, Azure DevOps and table storage. No keys, no PATs.
+azure-identity>=1.19.0
+
+# Run bookkeeping between the HTTP trigger and the timer poller.
+azure-data-tables>=12.5.0
+
+requests>=2.32.0

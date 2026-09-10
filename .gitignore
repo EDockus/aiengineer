@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / extension
+node_modules/
+extension/dist/
+extension/dist-vsix/
+extension/dev/dist/
+extension/dev/dist-checks/
+# Written by `npm run configure` in extension/: the deployer's publisher id,
+# agent URL and Entra app registration. Never committed.
+extension/deploy.local.json
+extension/vss-extension.local.json
+*.vsix
+
+# azd / Azure
+.azure/
+.env
+*.env.local
+
+# Azure Functions sample
+examples/function-app/local.settings.json
+examples/function-app/.python_packages/
+
+# Local dev scratch
+/work/
+.dev/
+*.log
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Working notes: how this repository was built, not part of what it ships. The
+# specification proper is docs/ -- docs/contract.md for the published interface,
+# docs/architecture.md for everything behind it.
+CLAUDE.md
+.claude/
+specs.md

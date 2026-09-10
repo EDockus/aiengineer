@@ -1,0 +1,471 @@
+/*
+ * Azure DevOps host theme.
+ *
+ * SDK.init({ applyTheme: true }) makes the host inject its palette into :root as
+ * CSS custom properties (--palette-*, --text-primary-color, --background-color,
+ * ...). Every colour below is read from those variables, so the page follows the
+ * user's chosen ADO theme in both light and dark without any theme detection
+ * here. The fallbacks in var(..., x) are the light-theme values and only apply
+ * before the host has answered, or in a plain browser.
+ *
+ * The palette variables hold bare "r, g, b" triples, hence rgba(var(--x), a).
+ * --palette-neutral-0 is always the background end of the ramp and
+ * --palette-neutral-100 the text end, in both themes.
+ */
+
+:root {
+  --t2pr-surface: rgba(var(--palette-neutral-0, 255, 255, 255), 1);
+  --t2pr-raised: rgba(var(--palette-neutral-2, 250, 249, 248), 1);
+  --t2pr-sunken: rgba(var(--palette-neutral-4, 244, 243, 242), 1);
+  --t2pr-border: rgba(var(--palette-neutral-30, 166, 166, 166), 0.6);
+  --t2pr-border-strong: rgba(var(--palette-neutral-30, 166, 166, 166), 1);
+  --t2pr-text: var(--text-primary-color, rgba(0, 0, 0, 0.9));
+  --t2pr-text-secondary: var(--text-secondary-color, rgba(0, 0, 0, 0.55));
+  --t2pr-text-disabled: var(--text-disabled-color, rgba(0, 0, 0, 0.38));
+  --t2pr-accent: rgba(var(--palette-primary, 0, 120, 212), 1);
+  --t2pr-accent-text: var(--text-on-communication-background, #ffffff);
+  --t2pr-error: rgba(var(--palette-accent1, 205, 74, 69), 1);
+  --t2pr-error-surface: rgba(var(--palette-accent1-light, 249, 209, 208), 0.35);
+  --t2pr-success: rgba(var(--palette-accent2, 16, 124, 16), 1);
+  --t2pr-success-surface: rgba(var(--palette-accent2-light, 223, 246, 221), 0.35);
+
+  --t2pr-radius: 2px;
+  --t2pr-gap: 16px;
+  --t2pr-font:
+    "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Helvetica, Ubuntu,
+    Arial, sans-serif;
+  --t2pr-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--t2pr-surface);
+  color: var(--t2pr-text);
+  font-family: var(--t2pr-font);
+  font-size: 14px;
+  line-height: 1.5;
+  /* The host frame scrolls; keep the page itself from double-scrolling. */
+  overflow-x: hidden;
+}
+
+.hub {
+  max-width: 720px;
+  padding: 20px 24px 48px;
+}
+
+/* --------------------------------------------------------------- typography */
+
+.hub-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.hub-context {
+  color: var(--t2pr-text-secondary);
+  margin: 4px 0 0;
+}
+
+.hub-header {
+  margin-bottom: var(--t2pr-gap);
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+code {
+  background: var(--t2pr-sunken);
+  border-radius: var(--t2pr-radius);
+  font-family: var(--t2pr-mono);
+  font-size: 0.9em;
+  padding: 1px 4px;
+}
+
+/* Visible only to assistive technology. */
+.sr-only {
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* ------------------------------------------------------------------- focus */
+
+/*
+ * A visible focus ring on every focusable control. Do not remove: keyboard
+ * users have no other indication of where they are.
+ */
+:where(a, button, input, select, summary, details):focus-visible {
+  outline: 2px solid var(--t2pr-accent);
+  outline-offset: 1px;
+}
+
+/* -------------------------------------------------------------- banner */
+
+.banner {
+  background: var(--t2pr-raised);
+  border: 1px solid var(--t2pr-border);
+  border-left: 3px solid var(--t2pr-accent);
+  border-radius: var(--t2pr-radius);
+  margin-bottom: var(--t2pr-gap);
+  padding: 12px 16px;
+}
+
+.banner-title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.banner-body {
+  color: var(--t2pr-text-secondary);
+  margin: 4px 0 0;
+}
+
+/* ------------------------------------------------------------------ forms */
+
+.settings {
+  border: 1px solid var(--t2pr-border);
+  border-radius: var(--t2pr-radius);
+  margin-bottom: var(--t2pr-gap);
+}
+
+.settings-summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 10px 16px;
+  user-select: none;
+}
+
+.settings-form {
+  border-top: 1px solid var(--t2pr-border);
+  padding: 16px;
+}
+
+.settings-intro {
+  color: var(--t2pr-text-secondary);
+  margin: 0 0 var(--t2pr-gap);
+}
+
+.settings-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.fieldset {
+  border: 1px solid var(--t2pr-border);
+  border-radius: var(--t2pr-radius);
+  margin: 0 0 var(--t2pr-gap);
+  padding: 4px 16px 16px;
+}
+
+.legend {
+  font-weight: 600;
+  padding: 0 6px;
+}
+
+.field {
+  margin-top: 12px;
+}
+
+.field-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.field-optional {
+  color: var(--t2pr-text-secondary);
+  font-weight: 400;
+}
+
+.field-input {
+  background: var(--t2pr-surface);
+  border: 1px solid var(--t2pr-border-strong);
+  border-radius: var(--t2pr-radius);
+  color: var(--t2pr-text);
+  font-family: inherit;
+  font-size: inherit;
+  padding: 6px 8px;
+  width: 100%;
+}
+
+.field-input:hover:not(:disabled):not([readonly]) {
+  border-color: var(--t2pr-accent);
+}
+
+/* Settings pinned by the extension package: readable, obviously not editable. */
+.field-input[readonly] {
+  background: var(--t2pr-sunken);
+  color: var(--t2pr-text-secondary);
+  cursor: default;
+}
+
+.field-input:disabled {
+  color: var(--t2pr-text-disabled);
+  cursor: not-allowed;
+}
+
+.field-input[aria-invalid="true"] {
+  border-color: var(--t2pr-error);
+}
+
+select.field-input {
+  /* Let the native control paint its own arrow so it matches the host chrome. */
+  height: 32px;
+}
+
+.field-hint {
+  color: var(--t2pr-text-secondary);
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
+.message {
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+
+.message[data-tone="muted"] {
+  color: var(--t2pr-text-secondary);
+}
+
+.message[data-tone="error"] {
+  color: var(--t2pr-error);
+}
+
+.message[data-tone="success"] {
+  color: var(--t2pr-success);
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.button {
+  background: var(--t2pr-raised);
+  border: 1px solid var(--t2pr-border-strong);
+  border-radius: var(--t2pr-radius);
+  color: var(--t2pr-text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  min-height: 32px;
+  padding: 5px 14px;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--t2pr-sunken);
+}
+
+.button:disabled {
+  color: var(--t2pr-text-disabled);
+  cursor: not-allowed;
+}
+
+.button-primary {
+  background: var(--t2pr-accent);
+  border-color: var(--t2pr-accent);
+  color: var(--t2pr-accent-text);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--t2pr-accent);
+  filter: brightness(0.92);
+}
+
+.button-primary:disabled {
+  background: var(--t2pr-sunken);
+  border-color: var(--t2pr-border-strong);
+  color: var(--t2pr-text-disabled);
+  filter: none;
+}
+
+.button-secondary {
+  margin-top: 8px;
+}
+
+.submit-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ----------------------------------------------------------- status panel */
+
+.status-panel {
+  border: 1px solid var(--t2pr-border);
+  border-radius: var(--t2pr-radius);
+  margin-top: 24px;
+  padding: 16px;
+}
+
+.status-live {
+  color: var(--t2pr-text-secondary);
+  margin: 0 0 12px;
+  min-height: 1.5em;
+}
+
+.phase-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.phase {
+  align-items: baseline;
+  color: var(--t2pr-text-disabled);
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.phase-marker {
+  display: inline-block;
+  text-align: center;
+  width: 1em;
+}
+
+.phase[data-status="done"] {
+  color: var(--t2pr-text-secondary);
+}
+
+.phase[data-status="done"] .phase-marker {
+  color: var(--t2pr-success);
+}
+
+.phase[data-status="current"] {
+  color: var(--t2pr-text);
+  font-weight: 600;
+}
+
+.phase[data-status="current"] .phase-marker {
+  animation: t2pr-pulse 1.4s ease-in-out infinite;
+  color: var(--t2pr-accent);
+}
+
+.phase[data-status="failed"] {
+  color: var(--t2pr-error);
+  font-weight: 600;
+}
+
+@keyframes t2pr-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase[data-status="current"] .phase-marker {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.status-detail:empty {
+  display: none;
+}
+
+.outcome {
+  border: 1px solid var(--t2pr-border);
+  border-radius: var(--t2pr-radius);
+  margin-top: 16px;
+  padding: 12px 16px;
+}
+
+.outcome[data-tone="success"] {
+  background: var(--t2pr-success-surface);
+  border-left: 3px solid var(--t2pr-success);
+}
+
+.outcome[data-tone="error"] {
+  background: var(--t2pr-error-surface);
+  border-left: 3px solid var(--t2pr-error);
+}
+
+.outcome-headline {
+  font-weight: 600;
+  margin: 0;
+}
+
+.outcome-body {
+  margin: 6px 0 0;
+}
+
+.result-grid {
+  display: grid;
+  gap: 2px 12px;
+  grid-template-columns: max-content 1fr;
+  margin: 12px 0;
+}
+
+.result-grid dt {
+  color: var(--t2pr-text-secondary);
+}
+
+.result-grid dd {
+  margin: 0;
+}
+
+.pr-link {
+  color: var(--t2pr-accent);
+  display: inline-block;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.error-detail {
+  margin-top: 12px;
+}
+
+.error-detail summary {
+  cursor: pointer;
+}
+
+.error-text {
+  background: var(--t2pr-sunken);
+  border-radius: var(--t2pr-radius);
+  font-family: var(--t2pr-mono);
+  font-size: 12px;
+  margin: 8px 0 0;
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-code {
+  color: var(--t2pr-text-secondary);
+  font-family: var(--t2pr-mono);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+.run-meta {
+  color: var(--t2pr-text-secondary);
+  font-family: var(--t2pr-mono);
+  font-size: 12px;
+  margin: 16px 0 0;
+  word-break: break-all;
+}

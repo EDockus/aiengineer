@@ -1,0 +1,16 @@
+# Every pull request gets a review request from the maintainer.
+#
+# The handle below is taken from this repository's `origin` remote. If the project is
+# published under a different account or organisation, change it here first: a CODEOWNERS
+# entry naming an account without push access is silently ignored, and the branch
+# protection rule "Require review from Code Owners" then blocks every pull request.
+*                       @EDockus
+
+# Paths where a wrong change is a security problem rather than a bug. Called out
+# separately so a future co-maintainer split does not lose them by accident.
+/SECURITY.md            @EDockus
+/scripts/               @EDockus
+/.github/workflows/     @EDockus
+/agent/Dockerfile       @EDockus
+/agent/src/ticket_to_pr/ado.py       @EDockus
+/agent/src/ticket_to_pr/launch.py    @EDockus

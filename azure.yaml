@@ -1,0 +1,180 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+#
+# ticket-to-pr-agent -- azd project definition. docs/deploy.md section 4 walks through it.
+#
+# Two services: a Foundry project, and the hosted agent built from agent/. There is no
+# infra/ directory: `infra.provider: microsoft.foundry` hands provisioning to the
+# azure.ai.projects azd extension, which synthesises the Bicep itself.
+#
+# CREATE OR CONNECT. Both paths live in this one file and the switch is the `endpoint:`
+# line in the ai-project service below:
+#
+#   endpoint absent  -> `azd provision` CREATES a resource group, a Foundry (AI Services)
+#                       account, a project, a container registry and the project's ACR
+#                       connection.
+#   endpoint present -> azd CONNECTS to that existing project and creates nothing but the
+#                       ACR connection.
+#
+# `scripts/setup.sh` manages that line -- see the marker comment below. Run the script;
+# do not hand-edit unless you know which path you are on.
+#
+# NOTE: FOUNDRY_PROJECT_ENDPOINT is deliberately absent from the agent's `env` map. The
+# platform injects it into hosted containers and `azd ai agent run` sets it locally;
+# declaring it there would shadow the platform value (docs/architecture.md section 2,
+# docs/configuration.md section 2).
+#
+# NOTE: ENABLE_HOSTED_AGENTS and ENABLE_CAPABILITY_HOST are not set anywhere in this
+# repository, and that is deliberate. A working azd environment carries
+# ENABLE_HOSTED_AGENTS=true / ENABLE_CAPABILITY_HOST=false, which looks like a step
+# scripts/setup.sh forgot. It is not: the azure.ai.agents extension writes both itself,
+# hard-coded, from its own preprovision and predeploy hooks whenever the project's agent
+# definition is a hosted agent -- there is no prompt, and hand-editing them does not stick
+# because the hook rewrites them on every `azd provision` and `azd deploy`. Under
+# `infra.provider: microsoft.foundry` they are inert in any case: that provider lives in
+# azure.ai.projects, whose embedded main.bicep has no enableHostedAgents or
+# enableCapabilityHost parameter and no capabilityHosts resource -- the container registry
+# is gated by its `includeAcr` parameter instead. They matter only to agent templates that
+# ship their own infra/ directory. Verified against azure.ai.agents 1.0.0-beta.13 and the
+# azure.ai.projects embedded Bicep, 2026-09-10. See docs/deploy.md Appendix B.
+
+name: ticket-to-pr-agent
+
+metadata:
+  template: ticket-to-pr-agent@0.1.0
+
+requiredVersions:
+  azd: ">=1.27.1"
+  extensions:
+    # beta.14 does not exist: 1.0.0-beta.13 is the latest published version of this
+    # extension (`azd extension show azure.ai.agents`). Requiring .14 made `azd deploy`
+    # fail its constraint check before doing any work.
+    azure.ai.agents: ">=1.0.0-beta.13"
+    azure.ai.projects: ">=1.0.0-beta.4"
+
+# Provisioning is done by the azure.ai.projects extension, not by Bicep in infra/.
+# Without this block `azd provision` falls back to the built-in bicep provider and fails
+# with "Could not find a part of the path '<repo>/infra/main.bicep'". Verified 2026-09-10.
+infra:
+  provider: microsoft.foundry
+
+services:
+  # ---------------------------------------------------------------------------------
+  # The Foundry project the agent lands in, and the container registry azd builds into.
+  #
+  # WARNING -- azd does NOT substitute ${VAR} anywhere inside this service. Verified with
+  # `azd provision --preview` on 2026-09-10: a deployment declared as
+  # `name: ${T2PR_MODEL_DEPLOYMENT}` is planned as a model deployment literally called
+  # "${T2PR_MODEL_DEPLOYMENT}". Substitution works in the agent service's `env:` map
+  # below, and (per the extension's own debug logging) under `network:` here -- nowhere
+  # else. Every value in this service must be a literal.
+  #
+  # That is why there is no `deployments:` block. The model deployment is created by
+  # `scripts/setup.sh` with a direct ARM PUT, for two reasons:
+  #
+  #   1. It has to honour T2PR_MODEL_DEPLOYMENT, which cannot be a ${VAR} here.
+  #   2. The default harness is claude-code, so the default model is an Anthropic one,
+  #      and ARM rejects those from this file:
+  #      "InvalidModelProviderData: ModelProviderData is required for Anthropic model
+  #      deployments but was not provided. Please provide all required fields: industry,
+  #      organizationName, and countryCode." The `deployments` schema here has no field
+  #      for modelProviderData. Reproduced with `azd provision --preview`, 2026-09-10.
+  #
+  # If you are on the `codex` harness and want an OpenAI deployment created by azd
+  # instead, uncomment this and hard-code the name to match T2PR_MODEL_DEPLOYMENT:
+  #
+  #   deployments:
+  #     - name: gpt-6
+  #       model:
+  #         format: OpenAI
+  #         name: gpt-6-astra
+  #         version: "2026-09-03"
+  #       sku:
+  #         name: GlobalStandard
+  #         capacity: 50
+  # ---------------------------------------------------------------------------------
+  ai-project:
+    host: azure.ai.project
+    # T2PR-MANAGED-ENDPOINT -- scripts/setup.sh rewrites the single line below.
+    # Commented out = create a new project. Uncommented = connect to that existing one.
+    # When it is uncommented the azd environment must also carry AZURE_AI_PROJECT_ID, or
+    # provision fails with "AZURE_AI_PROJECT_ID does not identify the project configured
+    # by the azure.yaml endpoint"; setup.sh sets it.
+    #endpoint: https://example.services.ai.azure.com/api/projects/example
+
+  # ---------------------------------------------------------------------------------
+  # The hosted agent. It lands in the ai-project service above; T2PR_MODEL_DEPLOYMENT
+  # names a deployment on that project's account.
+  # ---------------------------------------------------------------------------------
+  ticket-to-pr:
+    host: azure.ai.agent
+    kind: hosted
+    name: ticket-to-pr
+    description: Turns an Azure DevOps work item into a branch and a pull request.
+    project: agent
+    language: docker
+    startupCommand: ticket-to-pr
+    uses:
+      - ai-project
+
+    # docs/architecture.md section 2. Version 1.0.0 is the container protocol this image
+    # implements: on 1.0.0 the platform propagates caller identity for us, which is what the
+    # agent assumes. Do not raise this to 2.0.0 without first teaching the container to forward
+    # the per-request x-agent-foundry-call-id header on outbound Foundry calls.
+    protocols:
+      - protocol: invocations
+        version: 1.0.0
+
+    agentEndpoint:
+      protocols:
+        - invocations
+      authorizationSchemes:
+        - type: Entra
+
+    # docs/architecture.md section 2: 30 minutes. Valid range is 120..3600 seconds.
+    sessionConfiguration:
+      idleTimeoutSeconds: 1800
+
+    # docs/architecture.md section 4.4. 1 vCPU / 2 GiB is one of the three supported sizes.
+    container:
+      resources:
+        cpu: "1"
+        memory: 2Gi
+
+    # docs/configuration.md section 1. The three ${...} values come from the azd
+    # environment; the rest are edited here. T2PR_PORT is not one of that section's
+    # settings -- it exists because the hosted-agent runtime contract requires the
+    # container to listen on 8088.
+    env:
+      T2PR_HARNESS: ${T2PR_HARNESS}
+      T2PR_MODEL_DEPLOYMENT: ${T2PR_MODEL_DEPLOYMENT}
+      T2PR_ALLOWED_ORGS: ${T2PR_ALLOWED_ORGS}
+      # SECRET, and deliberately NOT a ${...} azd variable. Azure DevOps authenticates with
+      # a Personal Access Token because it cannot entitle a Foundry Entra agent identity
+      # (VS403283) and that identity cannot federate into one it does accept
+      # (AADSTS700231); docs/deploy.md section 3 records the routes tested. Model access is
+      # unaffected and still uses the platform identity.
+      #
+      # ${{connections....}} is resolved by the platform at container start from a Foundry
+      # project connection, which stores the value in Key Vault. That is better than an azd
+      # variable in three ways: the token never lands in .azure/<env>/.env on a developer
+      # machine, it is never written into the agent version's configuration, and a GET on
+      # the agent version returns this literal placeholder rather than the secret. Rotate by
+      # updating the connection -- no redeploy needed.
+      #
+      #   azd ai connection create ado-secrets --kind remote-tool \
+      #     --target https://dev.azure.com/<org> --auth-type custom-keys \
+      #     --custom-key "pat=<token>" --force
+      # NOTE the indirection. azd runs its own ${VAR} substitution over this file before
+      # the platform ever sees it, and it cannot parse the ${{...}} form -- it fails with
+      # "unable to parse variable name". So the azd variable carries the placeholder *text*
+      # and azd copies it through verbatim; the platform resolves it at container start.
+      # The azd environment therefore holds a harmless reference, never the token.
+      T2PR_ADO_PAT: ${T2PR_ADO_PAT}
+      T2PR_MAX_RUN_MINUTES: "20"
+      T2PR_MAX_FILES_CHANGED: "50"
+      T2PR_PR_DRAFT: "true"
+      T2PR_PR_REVIEWERS: ""
+      T2PR_COMMIT_AUTHOR_NAME: Ticket-to-PR agent
+      T2PR_COMMIT_AUTHOR_EMAIL: ticket-to-pr@noreply.local
+      T2PR_LOG_LEVEL: INFO
+      T2PR_PORT: "8088"

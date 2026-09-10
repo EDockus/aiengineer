@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-vsix/
+*.vsix
+
+# Written by `npm run configure` — the deployer's own publisher id, agent URL
+# and Entra app registration. Never committed.
+deploy.local.json
+vss-extension.local.json

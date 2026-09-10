@@ -1,0 +1,117 @@
+# gitleaks configuration for ticket-to-pr-agent.
+#
+# Why this file exists: the stock ruleset does not know the two secret *shapes* this
+# repository actually handles. Verified against gitleaks 8.30.1 -- the version CI pins --
+# on a corpus holding real-looking `entraTenantId`/`entraClientId`/`AZURE_TENANT_ID`
+# GUIDs, a Foundry account URL, and 52-character `T2PR_ADO_PAT` values: the default
+# ruleset reported "no leaks found". A `ghp_`/`AKIA`/`xoxb-` canary in the same corpus
+# did report a finding, so the binary and the wiring were never the problem -- these
+# shapes simply are not in the default set.
+#
+# A rule here is only as good as the assignment syntax it admits and the keywords that
+# decide whether it is evaluated at all, and both have been wrong before -- see the notes
+# on each rule. Every change to this file is measured the same way: a corpus of one file
+# per shape, half of them carrying a real-looking 52-character token or GUID and half
+# carrying this repository's own placeholder spellings, scanned on the pinned version.
+# The bar is every must-fire file reported and every placeholder file silent, with
+# `gitleaks dir .` and `gitleaks git .` on a clean checkout of this repository still
+# reporting no leaks.
+#
+# Both scans in .github/workflows/ci.yml pass `-c .gitleaks.toml`, so `gitleaks dir` and
+# `gitleaks git` share these rules.
+
+[extend]
+useDefault = true
+
+# ------------------------------------------------------------------------------------
+# A tenant or client id is not a password, but it is a customer identifier, and an earlier
+# revision of this repository came close to committing one. Anything shaped like a GUID *assigned to one of these keys* is a finding; the
+# repository's own documentation placeholders are allowlisted below.
+# ------------------------------------------------------------------------------------
+[[rules]]
+id = "t2pr-entra-directory-guid"
+description = "Entra tenant or client id assigned a real GUID"
+# No leading \b: `T2PR_ENTRA_CLIENT_ID` has no word boundary before `ENTRA`, because `_`
+# is a word character. The alternation carries the prefixes instead.
+regex = '''(?i)(?:entra|azure|t2pr[_-]?entra)[_-]?(?:tenant|client)[_-]?id["']?\s*[:=]\s*["']?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'''
+secretGroup = 1
+# gitleaks only evaluates a rule against a fragment that contains one of these,
+# so the dashed spellings the regex admits need their own entries: without
+# "tenant-id" the regex's own `[_-]` branch is dead code and
+# `entra-tenant-id: <guid>` is never tested.
+keywords = ["tenantid", "clientid", "tenant_id", "client_id", "tenant-id", "client-id"]
+
+  [rules.allowlist]
+  regexTarget = "match"
+  regexes = [
+    # Every placeholder GUID in this repository is one repeated hex digit per group:
+    # 00000000-0000-0000-0000-000000000000, aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee,
+    # 11111111-2222-3333-4444-555555555555 and so on. Written out rather than with a
+    # backreference, which Go's RE2 engine does not have.
+    '''(?i)(?:0{8}|1{8}|2{8}|3{8}|4{8}|5{8}|6{8}|7{8}|8{8}|9{8}|a{8}|b{8}|c{8}|d{8}|e{8}|f{8})-(?:0{4}|1{4}|2{4}|3{4}|4{4}|5{4}|6{4}|7{4}|8{4}|9{4}|a{4}|b{4}|c{4}|d{4}|e{4}|f{4})-(?:0{4}|1{4}|2{4}|3{4}|4{4}|5{4}|6{4}|7{4}|8{4}|9{4}|a{4}|b{4}|c{4}|d{4}|e{4}|f{4})-(?:0{4}|1{4}|2{4}|3{4}|4{4}|5{4}|6{4}|7{4}|8{4}|9{4}|a{4}|b{4}|c{4}|d{4}|e{4}|f{4})-(?:0{12}|1{12}|2{12}|3{12}|4{12}|5{12}|6{12}|7{12}|8{12}|9{12}|a{12}|b{12}|c{12}|d{12}|e{12}|f{12})''',
+  ]
+
+# ------------------------------------------------------------------------------------
+# The Azure DevOps Personal Access Token (docs/deploy.md section 3). A real secret, long-lived
+# until somebody revokes it, and the one credential this project cannot design away.
+# ------------------------------------------------------------------------------------
+[[rules]]
+id = "t2pr-ado-pat"
+description = "Azure DevOps PAT assigned to T2PR_ADO_PAT"
+# `[:=\s]`, not `[:=]`. The two shapes this repository actually prints assign the
+# token with neither character:
+#
+#     azd env set T2PR_ADO_PAT <token>      setup.sh --help, require_deploy_preconditions
+#     --custom-key "pat=<token>"            docs/deploy.md section 3
+#
+# The first separates name from value with a space; the second names the variable
+# `pat` on an `azd ai connection create` command line. Measured on gitleaks 8.30.1:
+# with `[:=]` both scanned clean carrying a real 52-character token.
+regex = '''(?i)(?:t2pr[_-]?ado[_-]?pat|--custom-key\s+["']?pat)["']?\s*[:=\s]\s*["']?([A-Za-z0-9+/=_-]{20,})'''
+secretGroup = 1
+keywords = ["t2pr_ado_pat", "t2pradopat", "t2pr-ado-pat", "custom-key"]
+
+  [rules.allowlist]
+  regexTarget = "match"
+  regexes = [
+    # The deployment flow deliberately stores a *placeholder* in this variable: azd
+    # substitutes ${T2PR_ADO_PAT} in azure.yaml with the literal Foundry connection
+    # reference, and the real token never appears in the repository at all.
+    '''\$\{''',
+    '''(?i)connections\.[a-z0-9-]+\.credentials''',
+    # Test and probe sentinels. They are named so a reader can tell at a glance that they
+    # are not tokens; the scanner should be told the same thing explicitly.
+    '''(?i)SENTINEL''',
+    '''(?i)(?:placeholder|changeme|redacted|example|your[_-]?pat|<[^>]+>)''',
+  ]
+
+# ------------------------------------------------------------------------------------
+# The same token, in the three shapes it travels in rather than the shape it is stored
+# in. `git` echoes the credential it was handed back into stderr when a fetch is refused
+# (agent/src/ticket_to_pr/redact.py exists for exactly that), and a deployer debugging
+# step 5 by hand reaches for AZURE_DEVOPS_EXT_PAT. None of these carries the string
+# `t2pr_ado_pat`, so the rule above cannot see any of them.
+#
+# The value class here deliberately omits `-`: an Azure DevOps PAT is 52 base32
+# characters and a Basic credential is base64, so neither ever contains one, while the
+# repository's own descriptive non-tokens ("a-pat-that-must-not-escape" in
+# agent/tests/test_harness.py) are full of them. That one character is what keeps this
+# rule off the test suite.
+# ------------------------------------------------------------------------------------
+[[rules]]
+id = "t2pr-ado-pat-transport"
+description = "Azure DevOps PAT in a URL, a Basic header, or a generic PAT variable"
+regex = '''(?i)(?:(?:azure[_-]?devops[_-]?ext[_-]?pat|x[_-]ado[_-]pat|ado[_-]?pat)["']?\s*[:=\s]\s*["']?[A-Za-z0-9+/=]{32,}|https://[^\s:/@]+:[A-Za-z0-9+/=]{32,}@|authorization:\s*basic\s+[A-Za-z0-9+/=]{32,})'''
+# gitleaks tests a fragment against a rule only when the fragment contains one of
+# these, so every spelling the regex admits needs one: "azure_devops_ext_pat" does
+# not contain "ado_pat", which is why "ext_pat" is here in its own right.
+keywords = ["ado_pat", "ado-pat", "adopat", "ext_pat", "ext-pat", "extpat",
+            "dev.azure.com", "visualstudio.com", "basic"]
+
+  [rules.allowlist]
+  regexTarget = "match"
+  regexes = [
+    '''\$\{''',
+    '''(?i)SENTINEL''',
+    '''(?i)(?:placeholder|changeme|redacted|example|your[_-]?pat|<[^>]+>)''',
+  ]

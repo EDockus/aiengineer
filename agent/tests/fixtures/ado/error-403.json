@@ -1,0 +1,8 @@
+{
+  "$id": "1",
+  "message": "TF401027: You need the Git 'GenericContribute' permission to perform this action.",
+  "typeName": "Microsoft.TeamFoundation.Git.Server.GitNeedsPermissionException",
+  "typeKey": "GitNeedsPermissionException",
+  "errorCode": 0,
+  "eventId": 3000
+}

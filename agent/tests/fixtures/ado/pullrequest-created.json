@@ -1,0 +1,21 @@
+{
+  "repository": {
+    "id": "11111111-2222-3333-4444-555555555555",
+    "name": "payments-api",
+    "project": { "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "name": "Platform" }
+  },
+  "pullRequestId": 812,
+  "codeReviewId": 812,
+  "status": "active",
+  "createdBy": { "displayName": "ticket-to-pr agent", "id": "99999999-0000-0000-0000-000000000000" },
+  "creationDate": "2026-09-09T06:45:42.7Z",
+  "title": "Bug #4123: Null reference when charging a zero-amount order",
+  "sourceRefName": "refs/heads/bugfix/4123-null-ref",
+  "targetRefName": "refs/heads/main",
+  "mergeStatus": "queued",
+  "isDraft": true,
+  "url": "https://ado.test/contoso/Platform/_apis/git/repositories/11111111-2222-3333-4444-555555555555/pullRequests/812",
+  "_links": {
+    "web": { "href": "https://ado.test/contoso/Platform/_git/payments-api/pullrequest/812" }
+  }
+}

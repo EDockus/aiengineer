@@ -1,0 +1,9 @@
+.venv/
+.dev-ado/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.claude/
+SECURITY.md

@@ -1,0 +1,10 @@
+{
+  "id": 4100,
+  "rev": 2,
+  "fields": {
+    "System.Id": 4100,
+    "System.WorkItemType": "Feature",
+    "System.Title": "Payments hardening"
+  },
+  "url": "https://ado.test/_apis/wit/workItems/4100"
+}

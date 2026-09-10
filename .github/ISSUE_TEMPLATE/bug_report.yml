@@ -1,0 +1,91 @@
+name: Bug report
+description: Something the agent, the extension or the deployment scripts did wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        **Not for security problems.** If an attacker could use this, close this form and
+        report it privately instead — see
+        [SECURITY.md](https://github.com/EDockus/aiengineer/blob/main/SECURITY.md).
+
+
+        Redact before you paste. A personal access token, an `Authorization` header, a
+        tenant id and a subscription id are all secrets, and an issue is public.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where
+      options:
+        - agent (the hosted FastAPI service)
+        - extension (the Azure DevOps hub page)
+        - scripts/setup.sh or scripts/teardown.sh
+        - examples/function-app
+        - docs
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+    validations:
+      required: true
+
+  - type: input
+    id: error-code
+    attributes:
+      label: Error code
+      description: >-
+        If the run failed, the `error.code` from the status response — one of the eleven
+        in docs/contract.md §6. Leave blank if there was no run.
+      placeholder: harness_failed
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: >-
+        The smallest sequence you have. A request body with the organization, project and
+        repository names changed is ideal.
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >-
+        Agent logs or script output around the failure. This is rendered as a code block;
+        it is not automatically redacted.
+      render: shell
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: >-
+        Harness (`T2PR_HARNESS`) and model deployment, the commit or release you are on,
+        how you deployed (`scripts/setup.sh` or by hand), and whether Azure DevOps is
+        `dev.azure.com` or a server.
+      value: |
+        - Harness / model:
+        - Commit or release:
+        - Deployed with:
+        - Azure DevOps:
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you file
+      options:
+        - label: >-
+            I checked docs/deploy.md's troubleshooting table — most deployment and polling
+            failures are already written up there.
+          required: true
+        - label: I removed every token, tenant id and subscription id from what I pasted.
+          required: true

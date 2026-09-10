@@ -1,0 +1,26 @@
+{
+  "name": "ticket-to-pr-extension",
+  "version": "0.1.0",
+  "description": "Azure DevOps hub extension for the ticket-to-pr agent",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && node scripts/build.mjs",
+    "build:dev": "node scripts/build.mjs --dev",
+    "dev": "node scripts/dev-server.mjs",
+    "verify": "node scripts/verify.mjs",
+    "configure": "node scripts/configure.mjs",
+    "package": "node scripts/configure.mjs --verify && npm run build && tfx extension create --manifest-globs vss-extension.local.json --output-path dist-vsix --no-prompt"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^5.21.0",
+    "azure-devops-extension-sdk": "^5.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "tfx-cli": "^0.24.0",
+    "typescript": "^5.9.3"
+  }
+}

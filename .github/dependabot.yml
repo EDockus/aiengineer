@@ -1,0 +1,52 @@
+version: 2
+
+# Three ecosystems, one per thing this repository actually installs from a registry.
+#
+# The github-actions entry is what makes the SHA pinning in .github/workflows/ci.yml
+# maintainable: Dependabot resolves each pinned SHA, opens a pull request when the
+# upstream action releases, and rewrites the trailing `# vX.Y.Z` comment for us. Pinned
+# SHAs without this entry would just rot.
+updates:
+  - package-ecosystem: pip
+    directory: /agent
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      agent-dependencies:
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps(agent)"
+
+  - package-ecosystem: pip
+    directory: /examples/function-app
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      function-app-dependencies:
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps(examples)"
+
+  - package-ecosystem: npm
+    directory: /extension
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      extension-dependencies:
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps(extension)"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"

@@ -1,0 +1,83 @@
+[project]
+name = "ticket-to-pr"
+version = "0.1.0"
+description = "Foundry hosted agent that turns an Azure DevOps work item into a branch and a pull request."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.9",
+    "httpx>=0.28",
+    "azure-identity>=1.19",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "anyio>=4.6",
+]
+
+# The console entry point is the launcher, not the server: it scrubs the managed-identity
+# plumbing out of the exec-time environment before exec'ing the server as the same pid, so
+# a same-uid harness cannot recover it from /proc/<pid>/environ (see launch.py, SECURITY.md
+# HIGH-1). The server itself is `python -m ticket_to_pr`, which the launcher execs.
+[project.scripts]
+ticket-to-pr = "ticket_to_pr.launch:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ticket_to_pr"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "S",    # flake8-bandit
+    "SIM",  # flake8-simplify
+    "PTH",  # flake8-use-pathlib
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "S101",  # assert is fine in this codebase
+    "N818",  # RunFailure is the domain name for a mapped contract failure
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "N"]
+"scripts/*" = ["S603", "S607"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+disallow_any_unimported = true
+plugins = []
+
+[[tool.mypy.overrides]]
+module = ["azure.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"

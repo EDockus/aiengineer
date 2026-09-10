@@ -1,0 +1,10 @@
+{
+  "_comment": "Administrator-pinned settings, shipped inside the extension package. This tracked file is deliberately EMPTY and must stay that way: it is a template, not a place to put your tenant's values. Run `npm run configure` (see extension/README.md, \"Configure the extension\") to write your real values into the untracked extension/deploy.local.json, which `npm run build` then copies into dist/agent-config.json for packaging. With agentUrl and entraClientId empty the hub falls back to per-user settings; when they are filled in the hub uses them for everyone in the organization and shows the settings form read-only. agentScope is a constant, not a choice - it is always https://ai.azure.com/.default, the Microsoft Foundry data plane. Changing packaged settings requires repackaging and reinstalling the extension, which needs the organization's Manage extensions permission - that is what makes it an administrator-only channel.",
+  "default": {
+    "agentUrl": "",
+    "entraClientId": "",
+    "agentScope": "https://ai.azure.com/.default",
+    "entraTenantId": ""
+  },
+  "projects": {}
+}

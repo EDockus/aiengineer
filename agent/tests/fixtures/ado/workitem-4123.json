@@ -1,0 +1,27 @@
+{
+  "id": 4123,
+  "rev": 7,
+  "fields": {
+    "System.Id": 4123,
+    "System.WorkItemType": "Bug",
+    "System.State": "Active",
+    "System.Title": "Null reference when charging a zero-amount order",
+    "System.Tags": "agent; payments",
+    "System.Description": "<div><p>Calling <code>charge()</code> with a zero amount raises a <b>NullReferenceException</b> in production.</p><p>Reported by &quot;Ops&quot; &amp; confirmed.</p></div>",
+    "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>charge(0) returns 0</li><li>a regression test covers it</li></ul>",
+    "Microsoft.VSTS.TCM.ReproSteps": "<ol><li>POST /charge with amount=0</li><li>Observe the 500</li></ol>"
+  },
+  "relations": [
+    {
+      "rel": "System.LinkTypes.Hierarchy-Reverse",
+      "url": "https://ado.test/_apis/wit/workItems/4100",
+      "attributes": { "name": "Parent" }
+    },
+    {
+      "rel": "ArtifactLink",
+      "url": "vstfs:///Git/Commit/x",
+      "attributes": { "name": "Fixed in Commit" }
+    }
+  ],
+  "url": "https://ado.test/_apis/wit/workItems/4123"
+}

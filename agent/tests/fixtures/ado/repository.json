@@ -1,0 +1,12 @@
+{
+  "id": "11111111-2222-3333-4444-555555555555",
+  "name": "payments-api",
+  "url": "https://ado.test/contoso/Platform/_apis/git/repositories/11111111-2222-3333-4444-555555555555",
+  "project": { "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "name": "Platform" },
+  "defaultBranch": "refs/heads/main",
+  "size": 2048,
+  "remoteUrl": "{{REMOTE_URL}}",
+  "sshUrl": "git@ssh.ado.test:v3/contoso/Platform/payments-api",
+  "webUrl": "https://ado.test/contoso/Platform/_git/payments-api",
+  "isDisabled": false
+}

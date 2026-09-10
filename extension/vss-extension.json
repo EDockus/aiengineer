@@ -1,0 +1,78 @@
+{
+  "manifestVersion": 1,
+  "id": "ticket-to-pr",
+  "publisher": "REPLACE-WITH-YOUR-PUBLISHER-ID",
+  "version": "0.1.1",
+  "name": "Ticket to PR",
+  "description": "Turn an Azure DevOps work item into a branch and a pull request using the ticket-to-pr agent.",
+  "public": false,
+  "categories": [
+    "Azure Repos"
+  ],
+  "tags": [
+    "pull request",
+    "work items",
+    "ai",
+    "agent",
+    "automation"
+  ],
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "icons": {
+    "default": "images/logo.png"
+  },
+  "scopes": [
+    "vso.work",
+    "vso.code",
+    "vso.extension.data_write"
+  ],
+  "content": {
+    "details": {
+      "path": "README.md"
+    }
+  },
+  "links": {
+    "repository": {
+      "uri": "https://github.com/REPLACE-WITH-YOUR-ORG/ticket-to-pr-agent"
+    },
+    "support": {
+      "uri": "https://github.com/REPLACE-WITH-YOUR-ORG/ticket-to-pr-agent/issues"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "uri": "https://github.com/REPLACE-WITH-YOUR-ORG/ticket-to-pr-agent"
+  },
+  "contributions": [
+    {
+      "id": "ticket-to-pr-hub",
+      "type": "ms.vss-web.hub",
+      "description": "Hub under Repos for creating a pull request from a work item.",
+      "targets": [
+        "ms.vss-code-web.code-hub-group"
+      ],
+      "properties": {
+        "name": "Ticket to PR",
+        "order": 100,
+        "uri": "dist/hub.html",
+        "icon": {
+          "light": "images/logo.png",
+          "dark": "images/logo.png"
+        }
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "dist",
+      "addressable": true
+    },
+    {
+      "path": "images",
+      "addressable": true
+    }
+  ]
+}

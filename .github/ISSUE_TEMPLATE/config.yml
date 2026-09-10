@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/EDockus/aiengineer/security/advisories/new
+    about: >-
+      Do not open a public issue for a security problem. Report it privately through
+      GitHub's private vulnerability reporting; SECURITY.md describes what to include
+      and what to expect.
+  - name: Contributing guide
+    url: https://github.com/EDockus/aiengineer/blob/main/CONTRIBUTING.md
+    about: Dev setup, how to run the tests, how to add a harness.
+  - name: Deployment troubleshooting
+    url: https://github.com/EDockus/aiengineer/blob/main/docs/deploy.md
+    about: >-
+      Read this first for a failed setup.sh, a 401 or 403 from the agent endpoint, or a
+      "400 Invalid invocation ID format" while polling. Most deployment problems are
+      already written up there with the fix.

@@ -1,0 +1,332 @@
+name: CI
+
+# docs/architecture.md section 7: lint (ruff), type check (mypy strict on src/), tests, docker
+# build. Explicitly NO deploy: this workflow never authenticates to Azure and never
+# runs azd.
+#
+# Every job here runs on a fork's pull request with no credentials at all. Nothing
+# reads a secret, nothing needs one, and no step is skipped when `secrets` is empty --
+# a contributor who forks this repository gets the same signal the maintainer does.
+#
+# Third-party action pinning: every `uses:` is pinned to a full commit SHA, including
+# GitHub's own `actions/*`. A tag is a mutable pointer -- whoever can push the tag can
+# change what a workflow with `contents: read` runs -- and the usual argument against
+# SHAs (they go stale) is answered by .github/dependabot.yml, which bumps them weekly
+# and rewrites the trailing version comment. Keep the comment accurate when you edit
+# a SHA by hand.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Verified against actions/python-versions' versions-manifest.json on 2026-09-10:
+  # 3.14.7 is published as stable for linux-22.04, linux-24.04 and linux-26.04, so
+  # `3.14` resolves on ubuntu-latest without `allow-prereleases`.
+  PYTHON_VERSION: "3.14"
+  NODE_VERSION: "22"
+  # Pinned tool versions, each with the sha256 of the linux_amd64 release archive as
+  # published in the release's own checksums file and independently recomputed on
+  # 2026-09-10. A version bump means a checksum bump.
+  GITLEAKS_VERSION: "8.30.1"
+  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  ACTIONLINT_VERSION: "1.7.12"
+  ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+  SHELLCHECK_VERSION: "0.11.0"
+  SHELLCHECK_SHA256: "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198"
+
+jobs:
+  agent:
+    name: agent (ruff, mypy --strict, pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install the agent and its dev dependencies
+        # Deliberately not `-e`: an editable install is broken on some Python 3.14
+        # hosts (see agent/README.md), and the suite adds src/ to the path itself.
+        run: |
+          python -m pip install --upgrade pip
+          pip install '.[dev]'
+
+      - name: Configure git for the tests
+        # The suite clones from and pushes to real bare repositories over file://.
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.invalid"
+          git config --global init.defaultBranch main
+
+      - name: ruff
+        run: ruff check .
+
+      - name: mypy --strict src/
+        run: mypy --strict src/
+
+      - name: pytest
+        run: pytest -q
+
+  container:
+    name: docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Build the agent image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: agent
+          platforms: linux/amd64
+          # Build only. Nothing is pushed anywhere and no registry credential exists
+          # in this workflow.
+          push: false
+          load: true
+          tags: ticket-to-pr:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: The image contains no .npmrc and no credential file, and both unprivileged uids exist
+        run: |
+          docker run --rm --entrypoint sh ticket-to-pr:ci -c '
+            set -e
+            for f in /root/.npmrc /work/.npmrc /usr/local/etc/npmrc /app/.npmrc; do
+              if [ -e "$f" ]; then echo "credential file present: $f" >&2; exit 1; fi
+            done
+            test -f /etc/ticket-to-pr/production
+            # Both unprivileged accounts must exist. The image USER is deliberately root
+            # -- see agent/Dockerfile -- because only root can fork the runner and drop it
+            # to a *different* uid than the server. `id -u` here is therefore 0 by design;
+            # the non-root requirement (docs/architecture.md section 4.4) is asserted at runtime by the
+            # next step, which is where it is actually true.
+            test "$(id -u agent)" -eq 10001
+            test "$(id -u harness)" -eq 10002
+          '
+
+      - name: Nothing runs as root at runtime (docs/architecture.md section 4.4)
+        run: |
+          set -euo pipefail
+          cid=$(docker run -d --rm \
+            -e T2PR_ALLOWED_ORGS=example \
+            -e T2PR_ADO_PAT=not-a-real-token \
+            -e T2PR_HARNESS=claude-code \
+            -e T2PR_MODEL_DEPLOYMENT=example-deployment \
+            -e FOUNDRY_PROJECT_ENDPOINT=https://example.services.ai.azure.com/api/projects/example \
+            ticket-to-pr:ci)
+          trap 'docker logs "$cid" || true; docker stop "$cid" >/dev/null 2>&1 || true' EXIT
+          # /healthz answers 200 only once config validation and harness preflight pass
+          # (docs/contract.md section 1). No model or Azure DevOps call is made to get there.
+          for _ in $(seq 1 30); do
+            if docker exec "$cid" python -I -c \
+                 "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).status == 200 else 1)"; then
+              ready=1; break
+            fi
+            sleep 2
+          done
+          test "${ready:-0}" = 1
+          # The launcher forks the runner as uid 10002 and drops the server to 10001
+          # before exec'ing it. pid 1 is the server; the runner is one of its siblings.
+          # (This shell is itself root -- `docker exec` always is -- so it is not one of
+          # the processes under test.)
+          docker exec "$cid" sh -c '
+            set -e
+            server=$(awk "/^Uid:/{print \$2}" /proc/1/status)
+            echo "pid 1 (server) uid=$server"
+            test "$server" -ne 0
+            runner=0
+            for s in /proc/[0-9]*/status; do
+              [ "$s" = /proc/1/status ] && continue
+              [ "$(awk "/^Uid:/{print \$2}" "$s")" = 10002 ] && runner=1
+            done
+            test "$runner" -eq 1 || { echo "no harness runner at uid 10002" >&2; exit 1; }
+          '
+
+      - name: Both harness CLIs are installed (docs/architecture.md section 4.4)
+        run: |
+          docker run --rm --entrypoint sh ticket-to-pr:ci -c \
+            'command -v git && command -v node && command -v codex && command -v claude'
+
+  examples:
+    name: examples/function-app (ruff, mypy --strict)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: examples/function-app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          # The Azure Functions Python runtime version this sample targets, not the
+          # agent's 3.14.
+          python-version: "3.12"
+
+      - name: Install the sample's dependencies and the linters
+        # The runtime dependencies are installed so mypy --strict can see real type
+        # information for azure-identity, azure-data-tables and requests.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt 'ruff>=0.8' 'mypy>=1.13' types-requests
+
+      - name: ruff
+        run: ruff check .
+
+      - name: mypy --strict
+        run: mypy --strict .
+
+  extension:
+    name: extension (typecheck, build, verify)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+
+      - run: npm ci
+
+      - name: tsc --noEmit
+        run: npm run typecheck
+
+      - run: npm run build
+
+      - name: npm run verify (the extension's own test suite)
+        # The real test suite: esbuild bundles dev/checks against the *shipped*
+        # src/hub.ts and src/ado-host.ts, aliasing only the two browser-only packages
+        # (the ADO SDK and MSAL) to local stubs. Typecheck and build alone would let a
+        # behavioural regression through; this will not. Some checks drive real timers,
+        # so the job is slower than the build -- that is the point of it.
+        run: npm run verify
+
+  scripts:
+    name: shell scripts and workflows (bash -n, shellcheck, actionlint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: bash -n (every script must at least parse)
+        run: |
+          set -euo pipefail
+          for f in scripts/*.sh; do
+            echo "bash -n $f"
+            bash -n "$f"
+          done
+
+      - name: shellcheck
+        # scripts/setup.sh and scripts/teardown.sh are the deploy and undeploy path for
+        # every user of this repository, so they are gated at shellcheck's default
+        # severity (style), not a softened one.
+        #
+        # The version is pinned and downloaded rather than taken from the runner image.
+        # Which findings shellcheck emits is version-dependent -- 0.9.0, which Ubuntu
+        # still packages, reports six SC2015 infos on `A && B || C` in setup.sh that
+        # 0.11.0 does not -- so an unpinned shellcheck makes the gate depend on whatever
+        # the image happens to ship, and `shellcheck -x scripts/*.sh` locally stops
+        # predicting CI.
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o shellcheck.tar.xz \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          echo "${SHELLCHECK_SHA256}  shellcheck.tar.xz" | sha256sum -c -
+          tar -xJf shellcheck.tar.xz --strip-components=1 \
+            "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+          ./shellcheck --version
+          cd "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/shellcheck" -x scripts/*.sh
+
+      - name: actionlint
+        # Lints this workflow itself -- expression syntax, action input names, runner
+        # labels -- and shells out to shellcheck for every inline `run:` block. A
+        # broken workflow otherwise only shows up after it is merged.
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum -c -
+          tar -xzf actionlint.tar.gz actionlint
+          cd "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/actionlint" -color
+
+  secrets:
+    name: secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # gitleaks scans commit history, not just the checked-out tree, so the
+          # shallow default would hide anything that was committed and then removed.
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        # The upstream gitleaks *action* asks organisations for a licence key, which
+        # would be a secret, and this workflow has none. The release binary needs
+        # nothing, so it is downloaded at a pinned version and checked against a
+        # pinned sha256 before it runs.
+        # Unpacked into RUNNER_TEMP, not the workspace, so the tree gitleaks scans is
+        # exactly the repository and nothing else.
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks version
+
+      - name: No secret in the working tree
+        # T2PR_ADO_PAT is a real secret (docs/deploy.md section 3) and an earlier revision
+        # of this repository came close to committing a tenant id. --redact keeps the
+        # finding itself out of a public build log.
+        #
+        # `-c .gitleaks.toml` is not optional. The default ruleset does not know either
+        # shape: measured on this exact pinned version, a corpus of real-looking
+        # entraTenantId/entraClientId/AZURE_TENANT_ID GUIDs and 52-character
+        # T2PR_ADO_PAT values scanned clean, while a ghp_/AKIA canary in the same corpus
+        # was found. The comment above was describing a scan that was not happening.
+        run: |
+          "$RUNNER_TEMP/gitleaks" dir . -c .gitleaks.toml --redact --no-banner --exit-code 1
+
+      - name: No secret anywhere in the history
+        run: |
+          "$RUNNER_TEMP/gitleaks" git . -c .gitleaks.toml --redact --no-banner --exit-code 1
