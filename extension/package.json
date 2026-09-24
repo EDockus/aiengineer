@@ -15,12 +15,12 @@
     "package": "node scripts/configure.mjs --verify && npm run build && tfx extension create --manifest-globs vss-extension.local.json --output-path dist-vsix --no-prompt"
   },
   "dependencies": {
-    "@azure/msal-browser": "^5.21.0",
+    "@azure/msal-browser": "^5.22.0",
     "azure-devops-extension-sdk": "^5.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
-    "tfx-cli": "^0.24.0",
-    "typescript": "^5.9.3"
+    "tfx-cli": "^0.24.2",
+    "typescript": "^7.0.2"
   }
 }
